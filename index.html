@@ -867,9 +867,12 @@ footer { border-top:1px solid var(--b0); padding:20px; text-align:center; font-f
   /* ---- PERSISTÊNCIA localStorage (apenas cards de vídeo) ---- */
   var STORE_CARDS = 'arquivo_vcards';
 
+  var binLoaded = false;
+
   function saveCards(){
+    if(!binLoaded) return; /* não salva antes de carregar a bin */
     var cards = [];
-    document.querySelectorAll('#vgrid .vcard').forEach(function(card){
+    document.querySelectorAll('#vgrid .vcard[data-saved]').forEach(function(card){
       cards.push({
         title: card.querySelector('.vtitle').textContent,
         tag:   card.querySelector('.vtag').textContent,
@@ -882,11 +885,12 @@ footer { border-top:1px solid var(--b0); padding:20px; text-align:center; font-f
   }
 
   function loadCards(cards){
-    if(!cards || !cards.length) return;
     var grid = document.getElementById('vgrid');
-    grid.innerHTML = '';
+    grid.innerHTML = ''; /* sempre limpa os cards padrão do HTML */
+    if(!cards || !cards.length) return;
     cards.forEach(function(data){
       var card = buildCard(data.title, data.tag, data.url, data.ytid);
+      card.dataset.saved = '1';
       grid.appendChild(card);
       attachCardClick(card);
     });
@@ -975,6 +979,7 @@ footer { border-top:1px solid var(--b0); padding:20px; text-align:center; font-f
           currentCard.dataset.ytid = id;
         }
       }
+      currentCard.dataset.saved = '1';
       saveCards(); /* ← salva após editar */
     }
     document.getElementById('vmodal').classList.remove('show');
@@ -1014,6 +1019,7 @@ footer { border-top:1px solid var(--b0); padding:20px; text-align:center; font-f
     var id = ytId(url);
     var card = buildCard(title, tag, url, id || '');
     document.getElementById('vgrid').appendChild(card);
+    card.dataset.saved = '1';
     attachCardClick(card);
     saveCards(); /* ← salva após criar */
     document.getElementById('vmodal').classList.remove('show');
@@ -1153,7 +1159,8 @@ footer { border-top:1px solid var(--b0); padding:20px; text-align:center; font-f
   /* Carrega dados do JSONBin ao abrir o site */
   fetchBin(function(data){
     /* Carregar vídeos salvos */
-    if(data.videos && data.videos.length){ loadCards(data.videos); }
+    loadCards(data.videos || []);
+    binLoaded = true;
     (data.teorias  || []).forEach(function(e){ addTeoria(e); });
     (data.noticias || []).forEach(function(d){ addNoticia(d, false); });
     (data.docs     || []).forEach(function(doc){ addDocItem(doc); });
