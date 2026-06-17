@@ -867,23 +867,26 @@ footer { border-top:1px solid var(--b0); padding:20px; text-align:center; font-f
   /* ---- VÍDEO CARDS — cards fixos no HTML, links salvos no JSONBin ---- */
 
   /* Aplica os links salvos na bin nos cards fixos do HTML */
+  var binReady = false;
+
   function applyCardLinks(links){
-    if(!links || !links.length) return;
     var cards = document.querySelectorAll('#vgrid .vcard');
-    links.forEach(function(lk, i){
-      if(!cards[i] || !lk.url) return;
-      var card = cards[i];
-      card.dataset.url  = lk.url;
-      card.dataset.ytid = lk.ytid || '';
-      if(lk.ytid){
-        card.querySelector('.vthumb').innerHTML = '<img src="https://img.youtube.com/vi/'+lk.ytid+'/mqdefault.jpg" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">';
+    cards.forEach(function(card, i){
+      var lk = links && links[i];
+      if(lk && lk.url){
+        card.dataset.url  = lk.url;
+        card.dataset.ytid = lk.ytid || '';
+        if(lk.ytid){
+          card.querySelector('.vthumb').innerHTML = '<img src="https://img.youtube.com/vi/'+lk.ytid+'/mqdefault.jpg" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">';
+        }
+        card.querySelector('.vmeta').textContent = 'Link salvo — clique para reproduzir';
       }
-      card.querySelector('.vmeta').textContent = 'Link salvo — clique para reproduzir';
     });
   }
 
   /* Salva os links de todos os cards fixos no JSONBin */
   function saveCardLinks(){
+    if(!binReady) return; /* aguarda bin carregar antes de salvar */
     var links = [];
     document.querySelectorAll('#vgrid .vcard').forEach(function(card){
       links.push({ url: card.dataset.url || '', ytid: card.dataset.ytid || '' });
@@ -1149,6 +1152,7 @@ footer { border-top:1px solid var(--b0); padding:20px; text-align:center; font-f
     applyCardLinks(data.videos || []);
     /* Registrar clique nos cards */
     document.querySelectorAll('#vgrid .vcard').forEach(attachCardClick);
+    binReady = true; /* libera saveCardLinks */
     (data.teorias  || []).forEach(function(e){ addTeoria(e); });
     (data.noticias || []).forEach(function(d){ addNoticia(d, false); });
     (data.docs     || []).forEach(function(doc){ addDocItem(doc); });
