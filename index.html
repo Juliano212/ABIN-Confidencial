@@ -864,36 +864,32 @@ footer { border-top:1px solid var(--b0); padding:20px; text-align:center; font-f
   });
   teoUrl.addEventListener('keydown', function(e){ if(e.key==='Enter') document.getElementById('teo-load-btn').click(); });
 
-  /* ---- PERSISTÊNCIA localStorage (apenas cards de vídeo) ---- */
-  var STORE_CARDS = 'arquivo_vcards';
+  /* ---- VÍDEO CARDS — cards fixos no HTML, links salvos no JSONBin ---- */
 
-  var binLoaded = false;
-
-  function saveCards(){
-    if(!binLoaded) return; /* não salva antes de carregar a bin */
-    var cards = [];
-    document.querySelectorAll('#vgrid .vcard[data-saved]').forEach(function(card){
-      cards.push({
-        title: card.querySelector('.vtitle').textContent,
-        tag:   card.querySelector('.vtag').textContent,
-        url:   card.dataset.url || '',
-        ytid:  card.dataset.ytid || ''
-      });
+  /* Aplica os links salvos na bin nos cards fixos do HTML */
+  function applyCardLinks(links){
+    if(!links || !links.length) return;
+    var cards = document.querySelectorAll('#vgrid .vcard');
+    links.forEach(function(lk, i){
+      if(!cards[i] || !lk.url) return;
+      var card = cards[i];
+      card.dataset.url  = lk.url;
+      card.dataset.ytid = lk.ytid || '';
+      if(lk.ytid){
+        card.querySelector('.vthumb').innerHTML = '<img src="https://img.youtube.com/vi/'+lk.ytid+'/mqdefault.jpg" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">';
+      }
+      card.querySelector('.vmeta').textContent = 'Link salvo — clique para reproduzir';
     });
-    binData.videos = cards;
-    saveBin(function(){});
   }
 
-  function loadCards(cards){
-    var grid = document.getElementById('vgrid');
-    grid.innerHTML = ''; /* sempre limpa os cards padrão do HTML */
-    if(!cards || !cards.length) return;
-    cards.forEach(function(data){
-      var card = buildCard(data.title, data.tag, data.url, data.ytid);
-      card.dataset.saved = '1';
-      grid.appendChild(card);
-      attachCardClick(card);
+  /* Salva os links de todos os cards fixos no JSONBin */
+  function saveCardLinks(){
+    var links = [];
+    document.querySelectorAll('#vgrid .vcard').forEach(function(card){
+      links.push({ url: card.dataset.url || '', ytid: card.dataset.ytid || '' });
     });
+    binData.videos = links;
+    saveBin(function(){});
   }
 
   function buildCard(title, tag, url, ytid){
@@ -950,8 +946,6 @@ footer { border-top:1px solid var(--b0); padding:20px; text-align:center; font-f
     });
   }
 
-  /* Cards são carregados pelo fetchBin no final — apenas registra clique nos padrão por ora */
-  document.querySelectorAll('.vcard').forEach(attachCardClick);
 
   document.getElementById('vm-cancel').addEventListener('click', function(){
     document.getElementById('vmodal').classList.remove('show');
@@ -967,20 +961,18 @@ footer { border-top:1px solid var(--b0); padding:20px; text-align:center; font-f
     var url   = document.getElementById('vm-url').value.trim();
     if(!title) return;
     if(currentCard){
+      var newId = ytId(url);
       currentCard.querySelector('.vtitle').textContent = title;
       currentCard.querySelector('.vtag').textContent   = tag || 'Arquivo';
-      currentCard.dataset.url = url;
+      currentCard.dataset.url  = url;
+      currentCard.dataset.ytid = newId || '';
       if(url){
         currentCard.querySelector('.vmeta').textContent = 'Link salvo — clique para reproduzir';
-        var id = ytId(url);
-        if(id){
-          var thumb = currentCard.querySelector('.vthumb');
-          thumb.innerHTML = '<img src="https://img.youtube.com/vi/'+id+'/mqdefault.jpg" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">';
-          currentCard.dataset.ytid = id;
+        if(newId){
+          currentCard.querySelector('.vthumb').innerHTML = '<img src="https://img.youtube.com/vi/'+newId+'/mqdefault.jpg" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">';
         }
       }
-      currentCard.dataset.saved = '1';
-      saveCards(); /* ← salva após editar */
+      saveCardLinks();
     }
     document.getElementById('vmodal').classList.remove('show');
   });
@@ -1016,12 +1008,7 @@ footer { border-top:1px solid var(--b0); padding:20px; text-align:center; font-f
     var tag   = document.getElementById('vm-tag').value.trim() || 'Arquivo';
     var url   = document.getElementById('vm-url').value.trim();
     if(!title){ document.getElementById('vmodal').classList.remove('show'); return; }
-    var id = ytId(url);
-    var card = buildCard(title, tag, url, id || '');
-    document.getElementById('vgrid').appendChild(card);
-    card.dataset.saved = '1';
-    attachCardClick(card);
-    saveCards(); /* ← salva após criar */
+    /* neste modelo os cards são fixos no HTML — não cria novos */
     document.getElementById('vmodal').classList.remove('show');
   }, {capture:false});
 
@@ -1158,9 +1145,10 @@ footer { border-top:1px solid var(--b0); padding:20px; text-align:center; font-f
 
   /* Carrega dados do JSONBin ao abrir o site */
   fetchBin(function(data){
-    /* Carregar vídeos salvos */
-    loadCards(data.videos || []);
-    binLoaded = true;
+    /* Aplicar links salvos nos cards fixos do HTML */
+    applyCardLinks(data.videos || []);
+    /* Registrar clique nos cards */
+    document.querySelectorAll('#vgrid .vcard').forEach(attachCardClick);
     (data.teorias  || []).forEach(function(e){ addTeoria(e); });
     (data.noticias || []).forEach(function(d){ addNoticia(d, false); });
     (data.docs     || []).forEach(function(doc){ addDocItem(doc); });
